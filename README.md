@@ -86,11 +86,20 @@ localStorage 按**源**隔离：如果以后把整个工作台发到线上域名
 
 ## 同步到 GitHub
 
-本地仓库与 `https://github.com/SuperAhua/Workspace` 的 `main` 分支关联。改动任意文件后：
+仓库：<https://github.com/SuperAhua/Workspace>（`main` 分支）。改动任意文件后：
 
 ```bash
 bash sync.sh "本次改动说明"
 ```
 
-脚本会自动 `add` → `commit` → 带重试地 `push`。Git 凭证已存入系统凭证管理器，无需重复输入 token。
-网络代理偶发 502，脚本内置重试；若全部失败，改动仍会保留在本地提交里，重新运行即可补推。
+**为什么不用 `git push`**：本机网络访问 `github.com` 会 CONNECT 502 / TLS 中断（被墙），但 `api.github.com` 可达。
+因此 `sync.sh` 调用 `tools/sync_to_github.py`，用 GitHub **Git Data API** 直接构造 blob / tree / commit 再移动分支引用，
+效果与 `push` 等价，且能正确处理 PNG 等二进制文件。
+
+机制细节：
+
+- 用 git blob sha1 比对本地与远端，**只上传有变化的文件**，无改动时直接退出、不产生空提交。
+- 本地仍会先 `git add` + `git commit`，保留可追溯的本地历史。
+- 凭证从 **Windows 凭据管理器**（`git credential fill`）读取，不落明文文件；
+  也可用环境变量 `GITHUB_TOKEN` 或 `GITHUB_TOKEN_FILE` 覆盖。
+

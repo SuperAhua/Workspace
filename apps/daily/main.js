@@ -1302,8 +1302,5 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden) { checkReminders(true); render(); }
 });
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => { });
-  });
-}
+/* Service Worker 注册已移除：本副本没有 sw.js，注册只会 404；
+   且工作台本身不需要子目录级缓存，留着反而容易拿到旧版本。 */

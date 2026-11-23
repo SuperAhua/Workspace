@@ -1,88 +1,108 @@
-# MyWorkspace · 本地工作台
+# MyWorkspace · 个人本地工作台
 
-> GitHub 仓库：<https://github.com/SuperAhua/Workspace>
+**把平时真正在用的几个小工具收进一个界面**：记账、健身打卡、日程待办。
+左栏导航 + 右侧内容区，纯静态页面，没有后端、没有账号、没有数据库 —— 所有数据只存在你自己的浏览器里。
 
-一个左栏导航 + 右内容区的本地工作台，三个应用已经装好：
+[**▶ 在线使用**](https://superahua.github.io/Workspace/) · [GitHub 仓库](https://github.com/SuperAhua/Workspace)
 
-| 应用 | 说明 | 入口 |
+---
+
+## 这是什么
+
+一个"自己给自己用"的工作台外壳。每个应用都是**独立的完整页面**，被外壳用 iframe 挂在右侧内容区里，
+所以三个应用各自带一整套全局样式、各自用 localStorage 存数据，互相完全隔离，谁也不会污染谁。
+
+切换应用时 iframe 不销毁 —— 记账页翻到哪个月、健身页聊到哪一句，切回来都还在原地。
+
+## 三个应用
+
+| 应用 | 一句话 | 主要功能 |
 | --- | --- | --- |
-| 随手记 | 本地记账：一句话记账、日历、统计、账户与预算 | `apps/ledger/index.html` |
-| 锻炼打卡 | AI 私教：训练计划、打卡、身体档案 | `apps/workout/index.html` |
-| 日常 | 一件一件做：今日清单、SOP 步骤、记录 | `apps/daily/index.html` |
+| **随手记** | 本地记账 | 一句话记账（输入「早饭 15」自动解析金额与分类）、日历视图、分类统计图表、账户与预算 |
+| **锻炼打卡** | AI 私教 | 训练计划与每日打卡、身体档案、接入大模型出计划（DeepSeek / 通义 / Kimi / 智谱 / OpenAI / SiliconFlow 等） |
+| **日常** | 一件一件做 | 今日清单、SOP 步骤流程、到点提醒（含桌面通知）、农历与节假日 |
 
-双击 `index.html` 即可打开，不用起服务。三个应用都是纯前端，断网也能用
-（锻炼打卡的农历/节假日数据首次会尝试走 CDN，取不到自动降级；日常的农历库已放本地 `_vendor/`）。
+> **AI 功能需要自备密钥**：锻炼打卡的模型调用由你在应用内「设置」里填写 API Key，
+> 密钥只写进本机 localStorage，不会上传到任何服务器。不填也能用打卡、档案等基础功能。
 
-## 加一个新应用（只有一步）
+## 在线使用
 
-1. 把应用丢进 `apps/`，比如 `apps/timer.html` 或 `apps/timer/index.html`；
-2. 打开 `index.html`，找到顶部的 `apps` 数组，加一行：
+直接打开：**<https://superahua.github.io/Workspace/>**
+
+由 GitHub Pages 从 `main` 分支根目录自动构建，仓库更新后一分钟左右生效。
+
+## 本地使用
+
+下载仓库后双击 `index.html` 即可，不需要起服务、不需要装依赖，断网也能用
+（健身页的农历/节假日数据首次会尝试走 CDN，取不到就降级；日常的农历库已放本地 `apps/workout/_vendor/`）。
+
+## 桌面端快捷键
+
+| 操作 | 快捷键 |
+| --- | --- |
+| 切换应用 | 点左栏 / `Ctrl`(`⌘`)+`K` 搜索 / `Alt`+`1`~`9` |
+| 折叠侧栏 | `Alt`+`B`（折叠成 68px 图标轨，状态会记住） |
+| 手机尺寸预览 | `Alt`+`P` |
+| 刷新当前应用 | `Alt`+`R` |
+| 直接打开某个应用 | 地址栏 `#/ledger`、`#/workout`、`#/daily` |
+
+手机上则是点顶栏应用名弹出切换面板，同一个"切换"入口的两种形态。
+上次打开的应用、侧栏折叠状态、预览开关都会被记住。
+
+## 目录结构
+
+```
+index.html                     工作台外壳：左栏、顶栏、iframe 容器、快捷键与路由
+apps/
+├─ ledger/                     随手记
+│  ├─ index.html  app.js  parser.js  styles.css   ← parser.js 负责"一句话记账"的解析
+│  ├─ manifest.json  icon-*.png
+│  └─ vendor/echarts.min.js    统计图表（本地内置，不依赖 CDN）
+├─ workout/                    锻炼打卡（单文件应用）
+│  ├─ index.html               UI + 逻辑全部内联
+│  └─ _vendor/lunar.min.js     农历库（本地优先，取不到才回退 CDN）
+└─ daily/                      日常
+   ├─ index.html  main.js  manifest.webmanifest  icon-192.png
+tools/sync_to_github.py        同步脚本的推送实现（见下文）
+sync.sh                        一键同步
+```
+
+## 加一个新应用
+
+1. 把文件丢进 `apps/`，比如 `apps/timer/index.html`；
+2. 打开 `index.html`，在 `apps` 数组里加一行：
 
 ```js
 {
-  id: 'timer',                    // 唯一标识，也用于地址栏 #/timer
+  id: 'timer',                     // 唯一标识，也是地址栏 #/timer
   name: '番茄钟',
-  sub: '25 分钟专注',              // 可选，手机切换面板的副标题
-  url: 'apps/timer.html',
-  accent: '#c4694a',              // 可选，选中时的主题色
-  icon: '<svg viewBox="0 0 24 24" ...>...</svg>'   // 可选，内联 SVG 或 emoji
+  sub: '25 分钟专注',               // 可选，手机切换面板的副标题
+  url: 'apps/timer/index.html',
+  accent: '#c4694a',               // 可选，选中时的主题色
+  width: 720,                      // 可选，桌面端 iframe 最大宽度
+  icon: '<svg viewBox="0 0 24 24">…</svg>'  // 可选，内联 SVG 或 emoji
 }
 ```
 
-刷新即可：左侧菜单、手机切换面板、⌘K 搜索、`Alt+数字` 快捷键、顶栏信息全部自动出现。
-**不需要改任何其它代码。** 文件里对应位置也写着同样的注释。
+刷新即可 —— 左栏菜单、手机切换面板、搜索、快捷键、顶栏标题全部自动出现，**其它代码一行都不用改**。
 
-> 图标建议用内联 SVG：它跟随文字颜色走（未选中是灰、选中染成该应用的 accent），
-> 比 emoji 更"成套"。emoji 也支持，直接用字符串即可。
+> 图标建议用内联 SVG：它会跟随文字颜色（未选中为灰、选中染成该应用的 accent），比 emoji 更成套。
 
-## 为什么用 iframe
+## 数据与隐私
 
-`apps/` 下每个应用都是**独立完整页面**，各自带一整套全局样式（`:root` 变量、`body` 背景、
-`#toast`、`.card` 这类通用类名/ID 大量重名）。用 iframe 隔开后样式和 JS 绝不互相污染，
-应用本身也不用为"被集成"做任何改造。切换应用时不销毁 iframe，所以记账页翻到哪个月份、
-健身页聊到哪一句，切回来都还在。
+- 三个应用各用各的 localStorage 前缀，互不冲突：随手记 `shoujizhang.*`、锻炼打卡 `wt.*`、日常 `daily*`。
+- **没有任何数据离开你的浏览器**，仓库里也不含任何记录（截图/示例里也看不到你的账目）。
+- localStorage 按**源**隔离：`file://` 打开的旧数据不会自动跟到 `https://superahua.github.io` 上。
+  换设备或换地址时，用各应用自带的「备份 / 导入」走一次即可。
+- 清空浏览器数据 = 数据消失，重要记录请定期导出备份。
 
-## 操作
+## 部署
 
-| 操作 | 桌面 | 手机 |
-| --- | --- | --- |
-| 切应用 | 点左侧菜单 / `⌘K`（Windows `Ctrl+K`）搜索 / `Alt`+`1`~`9` | 点顶栏应用名，弹出切换面板 |
-| 折叠侧栏 | 侧栏右上角 `‹`，或 `Alt+B`（折叠成 68px 图标轨，状态会记住） | — |
-| 手机尺寸预览 | 顶栏手机图标，或 `Alt+P` | 本身就是手机尺寸 |
-| 刷新当前应用 | `Alt+R` | 切换面板里的「刷新当前」 |
-| 新窗口打开 | 顶栏 ↗ 图标 | 切换面板里的「新窗口」 |
-| 直达某个应用 | 地址栏 `#/ledger`、`#/workout`、`#/daily` | 同 |
+站点由 **GitHub Pages** 托管（`main` 分支根目录，`legacy` 构建，强制 HTTPS）：
 
-顶栏标题在桌面端点一下也能直接打开 ⌘K 搜索，手机会弹出切换面板 —— 同一个"切换"入口，
-两种形态。上次打开的应用、侧栏折叠状态、手机预览开关都会记住。
+> Settings → Pages → Source 选 `Deploy from a branch` → `main` / `/ (root)`
 
-## 关于数据
-
-三个应用各用各的 localStorage 键前缀，互不冲突：
-
-- 随手记 `shoujizhang.*`
-- 锻炼打卡 `wt.*`
-- 日常 `daily*`
-
-localStorage 按**源**隔离：如果以后把整个工作台发到线上域名，本机 file:// 下的旧数据
-不会自动跟过去。需要迁移时用各应用自带的「备份 / 导入」走一次。
-
-> 锻炼打卡原本是线上地址，这里是完整离线副本，线上域名下的历史记录不会出现在本地这份里。
-> 想直接用线上那份（数据在那边），把它的 `url` 改成
-> `https://workout-checkin-38178.app.workbuddy.host/?sharecode=LESSFS3DXU` 即可，该站允许被 iframe 嵌入。
-> 日常同理：`https://wbapp-ckkoddmsbrkw3qhwornkg1.app.workbuddy.host/?sharecode=6N4JQIAFCZ`。
-
-## 抓取线上应用时的坑
-
-这几个 WorkBuddy 托管的站点，`index.html` 带 `?sharecode=` 能直接拿到，但它的**子资源**
-（`main.js`、`icon-*.png`、`manifest.webmanifest`）不带分享码会返回 403「链接不完整」。
-下载时把同一个 `sharecode` 拼到子资源地址后面即可。
-
-## 改动记录
-
-- `apps/ledger/index.html` 去掉了 Service Worker 注册（原应用装桌面时用），避免子目录缓存和工作台打架。
-- `apps/workout/index.html` 的农历库改为**本地优先**（`_vendor/lunar.min.js`），取不到才回退 CDN。
-- 新增 `sync.sh`：把本地改动一键提交并推送到 GitHub（带代理重试）。
+推送方式见下节。构建产物不需要提交，Pages 直接读源码。
 
 ## 同步到 GitHub
 
@@ -92,14 +112,30 @@ localStorage 按**源**隔离：如果以后把整个工作台发到线上域名
 bash sync.sh "本次改动说明"
 ```
 
-**为什么不用 `git push`**：本机网络访问 `github.com` 会 CONNECT 502 / TLS 中断（被墙），但 `api.github.com` 可达。
-因此 `sync.sh` 调用 `tools/sync_to_github.py`，用 GitHub **Git Data API** 直接构造 blob / tree / commit 再移动分支引用，
-效果与 `push` 等价，且能正确处理 PNG 等二进制文件。
+**为什么不用 `git push`**：开发机访问 `github.com` 会 CONNECT 502 / TLS 中断，但 `api.github.com` 可达。
+所以 `sync.sh` 调用 `tools/sync_to_github.py`，用 GitHub **Git Data API** 直接构造 blob → tree → commit → 移动分支引用，
+效果与 push 等价，且能正确处理 PNG 等二进制文件。
 
-机制细节：
+- 用 git blob sha1 比对本地与远端，**只上传有变化的文件**；无改动时直接退出，不产生空提交。
+- 本地仍会先 `git add` + `git commit`，保留一份可追溯的本地历史（与远端是两条独立 lineage，别手动 push）。
+- 凭证从系统凭据管理器（`git credential fill`）读取，不落明文文件；可用 `GITHUB_TOKEN` 或 `GITHUB_TOKEN_FILE` 覆盖。
 
-- 用 git blob sha1 比对本地与远端，**只上传有变化的文件**，无改动时直接退出、不产生空提交。
-- 本地仍会先 `git add` + `git commit`，保留可追溯的本地历史。
-- 凭证从 **Windows 凭据管理器**（`git credential fill`）读取，不落明文文件；
-  也可用环境变量 `GITHUB_TOKEN` 或 `GITHUB_TOKEN_FILE` 覆盖。
+## 来源与改动
 
+三个应用原本是 Workspace 上的独立站点，这里是从线上镜像下来的**完整离线副本**，并做了少量适配：
+
+- 去掉「随手记」的 Service Worker 注册，避免子目录缓存与工作台打架。
+- 「锻炼打卡」的农历库改为本地优先（`_vendor/lunar.min.js`），取不到才回退 CDN。
+- 「日常」移除了指向不存在的 `sw.js` 的注册逻辑。
+
+线上原站（数据在那边，本仓库是快照）：
+
+- 锻炼打卡：`https://workout-checkin-38178.app.workbuddy.host/?sharecode=LESSFS3DXU`
+- 日常：`https://wbapp-ckkoddmsbrkw3qhwornkg1.app.workbuddy.host/?sharecode=6N4JQIAFCZ`
+
+> 抓取这类托管站时有个坑：`index.html` 带 `?sharecode=` 能直接拿，但**子资源**（`main.js`、`icon-*.png`、`manifest.webmanifest`）
+> 不带分享码会 403「链接不完整」，需要把同一个 sharecode 拼到子资源地址后面。
+
+## License
+
+个人使用项目，未附开源许可证。

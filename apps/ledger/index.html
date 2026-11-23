@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f7fa">
+<title>随手记 · 本地记账</title>
+<link rel="icon" href="favicon.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="随手记">
+<meta name="format-detection" content="telephone=no,email=no">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="glow" aria-hidden="true"></div>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z"/>
+          <path d="M9.2 9.2 12 12.4l2.8-3.2M12 12.4V16M9.6 13.2h4.8"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>随手记</h1>
+        <p>本地记账 · 数据只在这台电脑</p>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" data-active="record">
+      <span class="tab-ind" aria-hidden="true"></span>
+      <button class="tab active" data-tab="record" role="tab">记账</button>
+      <button class="tab" data-tab="stats" role="tab">统计</button>
+    </nav>
+    <div class="topbar-stat">
+      <span id="top-label">本月支出</span>
+      <strong id="top-total">¥0</strong>
+    </div>
+  </header>
+
+  <!-- ============ 余额栏 ============ -->
+  <section class="wallet">
+    <div class="wallet-total">
+      <span class="wt-lab">总余额<i class="wt-tip">点账户看它的账</i></span>
+      <strong id="wallet-sum">¥0</strong>
+      <span class="wt-budget" id="wallet-budget" hidden></span>
+    </div>
+    <div class="wallet-list" id="wallet-list"></div>
+    <div class="wallet-save" id="wallet-save" hidden></div>
+    <button class="wallet-manage" id="wallet-manage">管理账户</button>
+    <i class="wallet-meter" id="wallet-meter" hidden><b id="wallet-meter-fill"></b></i>
+  </section>
+
+  <main>
+    <!-- 账户视图：点了某个账户后，整页只显示这本账 -->
+    <div class="acc-bar" id="acc-bar" hidden></div>
+
+    <!-- ============ 记账视图 ============ -->
+    <section id="view-record" class="view">
+      <div class="composer">
+        <div class="day-badge" id="day-badge" hidden></div>
+        <div class="composer-row">
+          <div class="input-wrap">
+            <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            <input id="nl-input" type="text" autocomplete="off" spellcheck="false" placeholder="一句话记账，如 中饭20 晚饭39">
+          </div>
+          <button class="btn-primary" id="add-btn">记一笔</button>
+        </div>
+        <div class="composer-meta">
+          <div class="preview" id="preview"></div>
+          <!-- 点预览里的分类标签展开：自己选这一笔记到哪个分类 -->
+          <div class="cat-pick" id="cat-pick" hidden></div>
+        </div>
+
+        <!-- 快捷记账：点标签 → 输数字 → 回车 -->
+        <div class="quick-bar">
+          <span class="quick-lab">快捷</span>
+          <div class="quick-tags" id="quick-tags"></div>
+          <button class="quick-add" id="quick-add" type="button" title="管理快捷标签" aria-label="管理快捷标签">＋</button>
+        </div>
+        <div class="quick-input" id="quick-input" hidden>
+          <span class="qi-tag" id="qi-tag">—</span>
+          <label class="qi-money"><span>¥</span><input id="qi-amount" inputmode="decimal" autocomplete="off" placeholder="金额"></label>
+          <button class="qi-btn" id="qi-ok" type="button">记下</button>
+          <button class="qi-x" id="qi-cancel" type="button" aria-label="取消">×</button>
+          <span class="qi-tip" id="qi-tip"></span>
+        </div>
+
+        <div class="chips-line">
+          <span class="quick-lab">试试</span>
+          <div class="chips" id="chips"></div>
+        </div>
+      </div>
+
+      <div class="split">
+        <section class="card calendar-card">
+          <div class="card-head">
+            <div class="month-nav">
+              <button class="icon-btn" id="prev-month" aria-label="上个月">‹</button>
+              <h2 id="cal-title">—</h2>
+              <button class="icon-btn" id="next-month" aria-label="下个月">›</button>
+            </div>
+            <button class="ghost-btn" id="today-btn">回到今天</button>
+          </div>
+          <div class="cal-sum" id="cal-sum"></div>
+          <div class="weekdays">
+            <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+          </div>
+          <div class="calendar" id="calendar"></div>
+          <div class="cal-legend">
+            <span class="cl-sign"><i></i>支出 -¥　收入 +¥</span>
+            <span class="cl-heat"><span>少</span><i class="h1"></i><i class="h2"></i><i class="h3"></i><i class="h4"></i><i class="h5"></i><span>多</span></span>
+          </div>
+        </section>
+
+        <section class="card day-card" id="day-card">
+          <div class="day-head">
+            <div class="day-head-main">
+              <h2 id="day-title">—</h2>
+              <p id="day-sub">—</p>
+            </div>
+            <div class="day-totals" id="day-totals"></div>
+          </div>
+
+          <!-- 搜索：金额 / 项目 / 分类 / 账户，跨全部月份 -->
+          <div class="search-row">
+            <div class="search-box">
+              <svg class="sb-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20.2 20.2-3.6-3.6"/></svg>
+              <input id="search-input" type="search" autocomplete="off" spellcheck="false" placeholder="搜金额、项目或分类，如 128">
+              <button class="sb-x" id="search-clear" type="button" aria-label="清空搜索" hidden>×</button>
+            </div>
+          </div>
+
+          <div class="day-summary" id="day-summary"></div>
+          <div class="entry-list" id="day-list"></div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ============ 统计视图 ============ -->
+    <section id="view-stats" class="view hidden">
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="lab">本周支出</div>
+          <div class="val" id="stat-week">¥0</div>
+          <div class="sub" id="stat-week-sub">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="lab" id="stat-month-label">本月支出</div>
+          <div class="val" id="stat-month">¥0</div>
+          <div class="sub" id="stat-month-sub">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="lab">本年支出</div>
+          <div class="val" id="stat-year">¥0</div>
+          <div class="sub" id="stat-year-sub">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="lab">本月收入</div>
+          <div class="val income" id="stat-income">¥0</div>
+          <div class="sub" id="stat-income-sub">—</div>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="card chart-card">
+          <div class="card-head">
+            <h3 id="pie-title">本月消费分类</h3>
+            <span class="head-note" id="pie-note"></span>
+          </div>
+          <div class="chart" id="pie-chart"></div>
+        </div>
+        <div class="card chart-card">
+          <div class="card-head">
+            <h3 id="line-title">本月每日支出</h3>
+            <span class="head-note" id="line-note"></span>
+          </div>
+          <div class="chart" id="line-chart"></div>
+        </div>
+      </div>
+
+      <div class="card insight">
+        <div class="budget-block" id="budget-block" hidden>
+          <div class="bb-head">
+            <span class="bb-lab">本月预算</span>
+            <span class="bb-val" id="bb-val">—</span>
+          </div>
+          <div class="bb-track"><i id="bb-fill"></i></div>
+          <p class="bb-tip" id="bb-tip"></p>
+        </div>
+        <h3>本月小结</h3>
+        <div id="insight"></div>
+      </div>
+
+      <div class="card ai-card">
+        <div class="card-head ai-head">
+          <div class="ai-title">
+            <h3>AI 收支分析</h3>
+            <span class="ai-badge" id="ai-badge">未配置</span>
+          </div>
+          <div class="ai-actions">
+            <button class="ghost-btn" id="ai-settings" type="button">设置</button>
+            <button class="btn-primary sm" id="ai-run" type="button">生成分析</button>
+          </div>
+        </div>
+        <div class="ai-body" id="ai-body">
+          <p class="ai-empty">配置一次大模型接口，就能让 AI 读懂你的账本：支出结构、异常项、还能省下哪些钱。</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span class="foot-note"><i class="fn-dot"></i>数据存在本机浏览器，建议定期备份</span>
+    <div class="foot-actions">
+      <button class="foot-btn" id="export-btn">导出本月账单</button>
+      <div class="more-wrap">
+        <button class="foot-btn more-btn" id="more-btn" aria-haspopup="menu" aria-expanded="false">
+          更多
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="more-menu" id="more-menu" role="menu" hidden>
+          <button type="button" role="menuitem" data-act="settings">设置 · 预算与 AI</button>
+          <button type="button" role="menuitem" data-act="backup">备份全部数据</button>
+          <button type="button" role="menuitem" data-act="restore">导入备份（补到现有数据）…</button>
+          <span class="mm-sep"></span>
+          <button type="button" role="menuitem" data-act="seed">载入示例数据</button>
+          <button type="button" role="menuitem" class="danger" data-act="clear">清空全部数据</button>
+        </div>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<div id="toast" role="status"></div>
+
+<!-- 账户 / 快捷标签 / 修改单笔 弹窗 -->
+<div class="mask" id="modal-mask" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-head">
+      <div>
+        <h3 id="modal-title">—</h3>
+        <p id="modal-sub"></p>
+      </div>
+      <button class="modal-x" id="modal-close" type="button" aria-label="关闭">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-foot">
+      <button class="ghost-btn" id="modal-cancel" type="button">取消</button>
+      <button class="btn-primary sm" id="modal-save" type="button">保存</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="restore-file" accept=".json,application/json" hidden>
+
+<!-- 图表库已放在本地 vendor/ 目录，双击即可用，断网也能出图 -->
+<script src="vendor/echarts.min.js"></script>
+<script src="parser.js"></script>
+<script src="app.js"></script>
+<!-- 嵌入工具箱后不再单独注册 Service Worker（避免子目录缓存和外壳打架） -->
+</body>
+</html>

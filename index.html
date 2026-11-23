@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101215">
+<title>MyWorkspace · 本地工作台</title>
+<meta name="format-detection" content="telephone=no,email=no">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%234a58e0'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='3.4' stroke-linejoin='round'%3E%3Crect x='15' y='15' width='13' height='13' rx='3.6'/%3E%3Crect x='36' y='15' width='13' height='13' rx='3.6'/%3E%3Crect x='15' y='36' width='13' height='13' rx='3.6'/%3E%3C/g%3E%3Cpath d='M42.5 35.5v15M35 43h15' stroke='%23fff' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  /* ==========================================================================
+     设计令牌
+     ========================================================================== */
+  :root{
+    --sb-w: 256px;
+    --sb-w-min: 68px;
+
+    /* 侧栏：深色，带轻微上光 */
+    --sb: #101215;
+    --sb-2: #171a1e;
+    --sb-line: rgba(255,255,255,.07);
+    --sb-line-2: rgba(255,255,255,.055);
+    --sb-text: #b6bec9;
+    --sb-text-dim: #7c8593;
+    --sb-text-faint: #5a626e;
+
+    /* 画布 */
+    --canvas: #ecedf1;
+    --surface: #ffffff;
+    --ink: #12151a;
+    --ink-2: #4d5665;
+    --mute: #7f8896;
+    --faint: #9aa3b0;
+    --line: rgba(15,20,30,.085);
+    --line-2: rgba(15,20,30,.055);
+
+    --acc: #4a58e0;
+
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --ease: cubic-bezier(.22,.82,.22,1);
+    --bar-h: 48px;
+  }
+
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body{ margin:0; padding:0; height:100%; }
+  body{
+    font-family: var(--font);
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--canvas);
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; touch-action: manipulation; }
+  b, strong{ font-weight: 600; }
+  :focus-visible{ outline: 2px solid var(--acc); outline-offset: 1px; border-radius: 6px; }
+  ::selection{ background: rgba(74,88,224,.16); }
+
+  /* ==========================================================================
+     总框架：左栏 + 右内容
+     ========================================================================== */
+  .wb{
+    display: grid;
+    grid-template-columns: var(--sb-w) minmax(0,1fr);
+    height: 100dvh;
+    transition: grid-template-columns .26s var(--ease);
+  }
+  @supports not (height: 100dvh){ .wb{ height: 100vh; } }
+  body.rail .wb{ grid-template-columns: var(--sb-w-min) minmax(0,1fr); }
+
+  /* ==========================================================================
+     侧边栏
+     ========================================================================== */
+  .sb{
+    position: relative;
+    display: flex; flex-direction: column;
+    min-width: 0; min-height: 0;
+    background: linear-gradient(180deg, var(--sb-2) 0%, var(--sb) 44%);
+    border-right: 1px solid rgba(0,0,0,.5);
+    box-shadow: inset -1px 0 0 rgba(255,255,255,.035), inset 0 1px 0 rgba(255,255,255,.05);
+    z-index: 30;
+    overflow: hidden;
+  }
+
+  .sb-head{
+    flex: 0 0 auto;
+    display: flex; align-items: center; gap: 10px;
+    height: 54px; padding: 0 10px 0 14px;
+  }
+  .logo{
+    flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px;
+    display: grid; place-items: center; color: #fff;
+    background: linear-gradient(160deg,#6b7bff 0%,#4a58e0 55%,#3c48c4 100%);
+    box-shadow: 0 3px 10px -4px rgba(74,88,224,.85), inset 0 1px 0 rgba(255,255,255,.32);
+  }
+  .logo svg{ width: 15px; height: 15px; }
+  .sb-name{
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 1px; overflow: hidden;
+  }
+  .sb-name b{
+    font-size: 12.5px; font-weight: 600; letter-spacing: -.005em; color: #edf0f5;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sb-name span{
+    font-size: 9.5px; letter-spacing: .11em; color: var(--sb-text-faint);
+    white-space: nowrap; text-transform: uppercase;
+  }
+  .sb-toggle{
+    flex: 0 0 auto; width: 24px; height: 24px; border-radius: 6px;
+    display: grid; place-items: center; color: var(--sb-text-faint);
+    transition: color .15s, background .15s;
+  }
+  .sb-toggle:hover{ color: #dfe4ec; background: rgba(255,255,255,.06); }
+  .sb-toggle svg{ width: 14px; height: 14px; transition: transform .26s var(--ease); }
+  body.rail .sb-toggle svg{ transform: rotate(180deg); }
+
+  .sb-nav{ flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 8px 10px; }
+  .sb-nav::-webkit-scrollbar{ width: 7px; }
+  .sb-nav::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.1); border-radius: 4px; }
+
+  .sb-label{
+    display: flex; align-items: center; gap: 6px;
+    margin: 4px 0 7px; padding: 0 8px;
+    font-size: 9.5px; letter-spacing: .13em; color: var(--sb-text-faint);
+    text-transform: uppercase;
+  }
+  .sb-label em{
+    font-style: normal; font-family: var(--mono); font-size: 9px;
+    padding: 1px 4px; border-radius: 4px;
+    background: rgba(255,255,255,.055); color: var(--sb-text-faint);
+  }
+
+  /* 菜单项 */
+  .mi{
+    position: relative; width: 100%;
+    display: flex; align-items: center; gap: 9px;
+    height: 34px; padding: 0 8px; margin-bottom: 2px;
+    border-radius: 7px; text-align: left;
+    color: var(--sb-text);
+    transition: background .14s, color .14s;
+  }
+  .mi:hover{ background: rgba(255,255,255,.045); color: #e9edf3; }
+  .mi.on{
+    color: #fff;
+    background: linear-gradient(180deg, rgba(255,255,255,.085), rgba(255,255,255,.05));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.055);
+  }
+  .mi.on::before{
+    content:''; position: absolute; left: 0; top: 9px; bottom: 9px;
+    width: 2px; border-radius: 0 2px 2px 0; background: var(--a, var(--acc));
+    box-shadow: 0 0 8px -1px var(--a, var(--acc));
+  }
+  .mi-ico{
+    flex: 0 0 auto; width: 18px; height: 18px;
+    display: grid; place-items: center;
+    color: var(--sb-text-dim);
+    transition: color .16s;
+  }
+  .mi-ico svg{ width: 17px; height: 17px; display: block; }
+  .mi-ico .emo{ font-size: 13px; line-height: 1; }
+  .mi:hover .mi-ico{ color: #cfd6e0; }
+  .mi.on .mi-ico{ color: var(--a, var(--acc)); }
+  .mi-name{
+    flex: 1; min-width: 0; font-size: 12.5px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .mi-kbd{
+    flex: 0 0 auto; font-family: var(--mono); font-size: 9.5px;
+    color: var(--sb-text-faint); opacity: 0; transition: opacity .14s;
+  }
+  .mi:hover .mi-kbd{ opacity: .85; }
+
+  .sb-foot{
+    flex: 0 0 auto;
+    display: flex; align-items: center; gap: 7px;
+    padding: 10px 10px 11px 14px;
+    border-top: 1px solid var(--sb-line-2);
+    font-size: 10.5px; color: var(--sb-text-faint);
+    white-space: nowrap;
+  }
+  .sb-foot .dot{
+    width: 5px; height: 5px; border-radius: 50%; flex: 0 0 auto;
+    background: #3fbf77; box-shadow: 0 0 0 3px rgba(63,191,119,.13);
+  }
+  .sb-foot span{ flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .kbd-btn{
+    flex: 0 0 auto;
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: .02em;
+    padding: 3px 6px; border-radius: 5px;
+    color: var(--sb-text-dim);
+    background: rgba(255,255,255,.055);
+    border: 1px solid rgba(255,255,255,.06);
+    transition: color .15s, background .15s;
+  }
+  .kbd-btn:hover{ color: #e2e7ef; background: rgba(255,255,255,.1); }
+
+  /* 折叠态（图标轨） */
+  body.rail .sb-name,
+  body.rail .mi-name,
+  body.rail .mi-kbd,
+  body.rail .sb-foot span,
+  body.rail .kbd-btn{ display: none; }
+  body.rail .sb-head{ height: 46px; flex-direction: column; justify-content: center; gap: 4px; padding: 0; }
+  body.rail .sb-toggle{ display: grid; width: 22px; height: 14px; opacity: .6; }
+  body.rail .sb-label{
+    display: block; font-size: 0; height: 1px; margin: 4px 12px 10px; padding: 0;
+    background: var(--sb-line-2);
+  }
+  body.rail .sb-label em{ display: none; }
+  body.rail .mi{ justify-content: center; padding: 0; height: 36px; }
+  body.rail .mi-ico{ width: 20px; height: 20px; }
+  body.rail .sb-foot{ justify-content: center; padding: 10px 0 11px; }
+
+  /* ==========================================================================
+     右侧：顶栏 + 画布
+     ========================================================================== */
+  .main{
+    display: flex; flex-direction: column;
+    min-width: 0; min-height: 0;
+  }
+
+  .bar{
+    position: relative; flex: 0 0 auto;
+    height: var(--bar-h);
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 10px 0 14px;
+    background: rgba(255,255,255,.78);
+    -webkit-backdrop-filter: saturate(1.6) blur(16px);
+            backdrop-filter: saturate(1.6) blur(16px);
+    border-bottom: 1px solid var(--line);
+    z-index: 10;
+  }
+  .switcher{
+    display: flex; align-items: center; gap: 8px;
+    min-width: 0; max-width: 100%;
+    padding: 4px 6px 4px 4px; margin-left: -4px;
+    border-radius: 7px;
+    cursor: default;
+    transition: background .15s;
+  }
+  .bar-ico{
+    flex: 0 0 auto; width: 22px; height: 22px; border-radius: 6px;
+    display: grid; place-items: center;
+    color: var(--acc);
+    background: color-mix(in srgb, var(--acc) 9%, #fff);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 14%, transparent);
+  }
+  .bar-ico svg{ width: 14px; height: 14px; display: block; }
+  .bar-ico .emo{ font-size: 12px; line-height: 1; }
+  .switcher b{
+    font-size: 13px; font-weight: 600; letter-spacing: -.005em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .chev{ width: 13px; height: 13px; flex: 0 0 auto; color: var(--faint); display: none; }
+
+  .path-chip{
+    font-family: var(--mono); font-size: 10px;
+    color: var(--mute);
+    padding: 2px 7px; border-radius: 5px;
+    background: rgba(15,20,30,.045);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 34vw;
+  }
+  .bar-spacer{ flex: 1; }
+  .bar-actions{ display: flex; align-items: center; gap: 2px; flex: 0 0 auto; }
+  .ibtn{
+    width: 28px; height: 28px; border-radius: 7px;
+    display: grid; place-items: center; color: var(--ink-2);
+    transition: color .15s, background .15s, transform .1s;
+  }
+  .ibtn svg{ width: 15px; height: 15px; }
+  .ibtn:hover{ color: var(--ink); background: rgba(15,20,30,.06); }
+  .ibtn:active{ transform: scale(.93); }
+  .ibtn.on{ color: var(--acc); background: color-mix(in srgb, var(--acc) 11%, transparent); }
+
+  /* 载入进度：顶栏底部细线 */
+  .bar::after{
+    content:''; position: absolute; left: 0; bottom: -1px; height: 2px; width: 34%;
+    background: linear-gradient(90deg, transparent, var(--acc), transparent);
+    opacity: 0; transition: opacity .2s;
+  }
+  .bar.loading::after{ opacity: 1; animation: slide 1.05s ease-in-out infinite; }
+  @keyframes slide{
+    0%{ transform: translateX(-105%); }
+    100%{ transform: translateX(320%); }
+  }
+
+  /* 画布 */
+  .stage{
+    position: relative;
+    flex: 1 1 auto; min-height: 0;
+    display: flex;
+    padding: 12px 14px 14px;
+    background:
+      radial-gradient(90% 60% at 12% -10%, rgba(74,88,224,.055), transparent 62%),
+      radial-gradient(70% 50% at 100% 0%, rgba(240,136,62,.05), transparent 58%),
+      var(--canvas);
+  }
+
+  .screen{
+    position: relative;
+    flex: 1 1 auto; min-width: 0;
+    margin-left: auto; margin-right: auto;   /* 宽屏时居中，不把应用拉得过宽 */
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow:
+      0 0 0 1px var(--line),
+      0 1px 2px rgba(15,20,30,.045),
+      0 18px 44px -32px rgba(15,20,30,.55);
+    transition: width .3s var(--ease), max-width .3s var(--ease), border-radius .3s, box-shadow .3s;
+  }
+  .frame{
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    border: 0; display: block;
+    background: var(--surface);
+    color-scheme: light;
+    opacity: 0;
+    transition: opacity .26s ease;
+  }
+  .frame.on{ opacity: 1; }
+  .frame[hidden]{ display: none; }
+
+  /* 骨架屏：模仿应用排版，而不是转圈 */
+  .skel{
+    position: absolute; inset: 0; z-index: 2;
+    display: flex; flex-direction: column;
+    background: var(--surface);
+    transition: opacity .3s ease, visibility .3s;
+  }
+  .skel.off{ opacity: 0; visibility: hidden; }
+  .skel-top{
+    flex: 0 0 auto; height: 52px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 18px;
+    border-bottom: 1px solid var(--line-2);
+  }
+  .skel-body{ flex: 1; padding: 22px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .sk-line{
+    border-radius: 6px;
+    background: linear-gradient(90deg, #f2f4f7 25%, #e9ecf1 37%, #f2f4f7 63%);
+    background-size: 340% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+  .sk-ico{ width: 26px; height: 26px; border-radius: 7px; flex: 0 0 auto; }
+  .sk-t{ width: 96px; height: 11px; }
+  .sk-pill{ width: 62px; height: 20px; border-radius: 999px; margin-left: auto; }
+  .sk-hero{ height: 96px; border-radius: 12px; }
+  .sk-row{ display: flex; gap: 12px; }
+  .sk-card{ flex: 1; height: 92px; border-radius: 10px; }
+  @keyframes shimmer{
+    0%{ background-position: 120% 0; }
+    100%{ background-position: -60% 0; }
+  }
+  .skel-tip{
+    position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
+    font-size: 11px; color: var(--faint); letter-spacing: .02em;
+    display: flex; align-items: center; gap: 5px; white-space: nowrap;
+  }
+  .skel-tip b{ color: var(--ink-2); font-weight: 500; }
+
+  /* 手机尺寸预览 */
+  body.phone .stage{ padding: 18px; }
+  body.phone .screen{
+    width: 390px; flex: 0 0 auto;
+    margin: 0 auto;
+    border-radius: 22px;
+    box-shadow:
+      0 0 0 1px rgba(15,20,30,.1),
+      0 2px 5px rgba(15,20,30,.06),
+      0 34px 60px -34px rgba(15,20,30,.5);
+  }
+
+  /* ==========================================================================
+     移动端：应用切换面板
+     ========================================================================== */
+  .mask{
+    position: fixed; inset: 0; z-index: 40;
+    background: rgba(10,12,16,.34);
+    -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+    opacity: 0; pointer-events: none; transition: opacity .22s;
+  }
+  body.sheet-open .mask{ opacity: 1; pointer-events: auto; }
+
+  .sheet{
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+    background: #fff;
+    border-radius: 20px 20px 0 0;
+    padding: 8px 12px calc(12px + env(safe-area-inset-bottom));
+    box-shadow: 0 -20px 50px -24px rgba(10,12,16,.45);
+    transform: translateY(104%);
+    transition: transform .32s var(--ease);
+    will-change: transform;
+  }
+  body.sheet-open .sheet{ transform: translateY(0); }
+  .sheet-grip{ width: 38px; height: 4px; border-radius: 2px; background: rgba(15,20,30,.16); margin: 6px auto 10px; }
+  .sheet-h{
+    display: flex; align-items: baseline; gap: 7px;
+    padding: 2px 6px 10px;
+    font-size: 13px; font-weight: 600;
+  }
+  .sheet-h span{ font-size: 11px; font-weight: 400; color: var(--mute); }
+  .sheet-item{
+    width: 100%; display: flex; align-items: center; gap: 11px;
+    padding: 10px 8px; border-radius: 12px;
+    text-align: left; transition: background .14s;
+  }
+  .sheet-item:active{ background: rgba(15,20,30,.05); }
+  .sheet-item .ico{
+    width: 32px; height: 32px; border-radius: 9px; flex: 0 0 auto;
+    display: grid; place-items: center;
+    color: var(--a, var(--acc));
+    background: color-mix(in srgb, var(--a, var(--acc)) 10%, #fff);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--a, var(--acc)) 16%, transparent);
+  }
+  .sheet-item .ico svg{ width: 17px; height: 17px; }
+  .sheet-item .ico .emo{ font-size: 15px; }
+  .sheet-item .txt{ flex: 1; min-width: 0; }
+  .sheet-item .txt b{ display: block; font-size: 13.5px; color: var(--ink); }
+  .sheet-item .txt span{
+    display: block; font-size: 11px; color: var(--mute); margin-top: 1px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sheet-item .tick{ flex: 0 0 auto; color: var(--a, var(--acc)); opacity: 0; }
+  .sheet-item .tick svg{ width: 16px; height: 16px; }
+  .sheet-item.on .tick{ opacity: 1; }
+  .sheet-item.on{
+    background: color-mix(in srgb, var(--a, var(--acc)) 6%, #fff);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--a, var(--acc)) 12%, transparent);
+  }
+  .sheet-foot{
+    display: flex; gap: 8px; margin-top: 6px; padding-top: 10px;
+    border-top: 1px solid var(--line-2);
+  }
+  .sheet-fbtn{
+    flex: 1; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    font-size: 12px; color: var(--ink-2);
+    background: rgba(15,20,30,.045);
+    transition: background .14s;
+  }
+  .sheet-fbtn:active{ background: rgba(15,20,30,.09); }
+  .sheet-fbtn svg{ width: 14px; height: 14px; }
+
+  /* ==========================================================================
+     命令面板（⌘K）
+     ========================================================================== */
+  .pal{
+    position: fixed; inset: 0; z-index: 60;
+    display: flex; justify-content: center; align-items: flex-start;
+    padding: 13vh 16px 16px;
+    background: rgba(10,12,16,.3);
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+    opacity: 0; pointer-events: none; transition: opacity .18s;
+  }
+  body.pal-open .pal{ opacity: 1; pointer-events: auto; }
+  .pal-box{
+    width: min(520px, 100%);
+    background: #fff; border-radius: 14px; overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(15,20,30,.09), 0 40px 80px -30px rgba(10,12,16,.55);
+    transform: translateY(-8px) scale(.985);
+    transition: transform .2s var(--ease);
+  }
+  body.pal-open .pal-box{ transform: none; }
+  .pal-in{
+    display: flex; align-items: center; gap: 9px;
+    padding: 0 14px; height: 48px;
+    border-bottom: 1px solid var(--line-2);
+  }
+  .pal-in svg{ width: 15px; height: 15px; color: var(--faint); flex: 0 0 auto; }
+  .pal-in input{
+    flex: 1; height: 100%; border: 0; outline: none; background: none;
+    font: inherit; font-size: 13.5px; color: var(--ink);
+  }
+  .pal-in input::placeholder{ color: var(--faint); }
+  .pal-in kbd{
+    font-family: var(--mono); font-size: 9.5px; color: var(--faint);
+    padding: 2px 5px; border-radius: 4px; background: rgba(15,20,30,.05);
+  }
+  .pal-list{ max-height: 46vh; overflow-y: auto; padding: 6px; }
+  .pal-item{
+    width: 100%; display: flex; align-items: center; gap: 10px;
+    padding: 8px 9px; border-radius: 9px; text-align: left;
+  }
+  .pal-item .ico{
+    width: 26px; height: 26px; border-radius: 7px; flex: 0 0 auto;
+    display: grid; place-items: center; color: var(--a, var(--acc));
+    background: color-mix(in srgb, var(--a, var(--acc)) 9%, #fff);
+  }
+  .pal-item .ico svg{ width: 15px; height: 15px; }
+  .pal-item .ico .emo{ font-size: 13px; }
+  .pal-item .txt{ flex: 1; min-width: 0; }
+  .pal-item .txt b{ display: block; font-size: 12.5px; font-weight: 500; }
+  .pal-item .txt span{
+    display: block; font-family: var(--mono); font-size: 9.5px; color: var(--faint); margin-top: 1px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .pal-item .go{ font-size: 10px; color: var(--faint); opacity: 0; flex: 0 0 auto; }
+  .pal-item.cur .go{ opacity: 1; color: var(--acc); }
+  .pal-item.sel{ background: rgba(15,20,30,.055); }
+  .pal-empty{ padding: 22px; text-align: center; font-size: 12px; color: var(--faint); }
+
+  /* ==========================================================================
+     窄屏 / 移动端
+     ========================================================================== */
+  @media (max-width: 880px){
+    :root{ --bar-h: 46px; }
+    .wb, body.rail .wb{ grid-template-columns: minmax(0,1fr); }
+    .sb{ display: none; }
+
+    .bar{ padding: 0 6px 0 10px; gap: 4px; }
+    .switcher{ cursor: pointer; padding: 5px 8px 5px 6px; }
+    .switcher:active{ background: rgba(15,20,30,.05); }
+    .chev{ display: block; }
+    .path-chip{ display: none; }
+    .ibtn{ width: 32px; height: 32px; }
+    #previewBtn{ display: none; }
+
+    .stage{ padding: 0; background: var(--surface); }
+    body.phone .stage{ padding: 0; }
+    body.phone .screen{ width: 100%; border-radius: 0; box-shadow: none; }
+    /* 手机上永远铺满，忽略每个应用的舒适宽度 */
+    .screen{ width: 100%; max-width: none !important; border-radius: 0; box-shadow: none; }
+    .skel-top{ height: 48px; padding: 0 14px; }
+    .skel-body{ padding: 16px 14px; }
+    .skel-tip{ bottom: 12px; font-size: 10.5px; }
+
+    .pal{ padding: 8vh 12px 12px; }
+    .pal-list{ max-height: 58vh; }
+  }
+
+  @media (max-width: 380px){
+    .switcher b{ max-width: 42vw; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wb">
+
+  <!-- ==================== 侧边栏 ==================== -->
+  <aside class="sb">
+    <div class="sb-head">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3.2" y="3.2" width="7.2" height="7.2" rx="2"/>
+          <rect x="13.6" y="3.2" width="7.2" height="7.2" rx="2"/>
+          <rect x="3.2" y="13.6" width="7.2" height="7.2" rx="2"/>
+          <path d="M17.2 13.4v7.4M13.5 17.1h7.4"/>
+        </svg>
+      </div>
+      <div class="sb-name">
+        <b>MyWorkspace</b>
+        <span>本地工作台</span>
+      </div>
+      <button class="sb-toggle" id="railBtn" type="button" aria-label="折叠侧边栏">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 6-6 6 6 6"/></svg>
+      </button>
+    </div>
+
+    <nav class="sb-nav" aria-label="应用">
+      <p class="sb-label">应用 <em id="appCount">0</em></p>
+      <div id="menuList"></div>
+    </nav>
+
+    <div class="sb-foot">
+      <i class="dot"></i>
+      <span id="footText">本地运行</span>
+      <button class="kbd-btn" id="palBtn" type="button" title="快速切换应用">⌘K</button>
+    </div>
+  </aside>
+
+  <!-- ==================== 主内容 ==================== -->
+  <main class="main">
+    <header class="bar" id="bar">
+      <button class="switcher" id="switcherBtn" type="button">
+        <span class="bar-ico" id="barIco"></span>
+        <b id="barName">—</b>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <code class="path-chip" id="barPath">—</code>
+      <div class="bar-spacer"></div>
+      <div class="bar-actions">
+        <button class="ibtn" id="previewBtn" type="button" title="手机尺寸预览（Alt + P）" aria-label="手机尺寸预览" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6"/><path d="M10.6 5.4h2.8"/></svg>
+        </button>
+        <button class="ibtn" id="reloadBtn" type="button" title="刷新（Alt + R）" aria-label="刷新">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.4 5.7"/><path d="M20 4.6V11h-6.4"/></svg>
+        </button>
+        <button class="ibtn" id="openBtn" type="button" title="在新窗口打开" aria-label="在新窗口打开">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-8.5 8.5"/><path d="M18 14.5v4A1.5 1.5 0 0 1 16.5 20h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6h4"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="stage">
+      <div class="screen" id="screen">
+        <div class="skel" id="skel">
+          <div class="skel-top">
+            <div class="sk-line sk-ico"></div>
+            <div class="sk-line sk-t"></div>
+            <div class="sk-line sk-pill"></div>
+          </div>
+          <div class="skel-body">
+            <div class="sk-line sk-hero"></div>
+            <div class="sk-row">
+              <div class="sk-line sk-card"></div>
+              <div class="sk-line sk-card"></div>
+            </div>
+            <div class="sk-line" style="height:14px;width:72%"></div>
+            <div class="sk-line" style="height:14px;width:46%"></div>
+          </div>
+          <div class="skel-tip">正在打开 <b id="skelName">—</b>…</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="mask" id="mask"></div>
+
+<!-- ==================== 移动端应用切换 ==================== -->
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="切换应用">
+  <div class="sheet-grip"></div>
+  <div class="sheet-h">切换应用 <span id="sheetSub">—</span></div>
+  <div id="sheetList"></div>
+  <div class="sheet-foot">
+    <button class="sheet-fbtn" id="sheetReload" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.4 5.7"/><path d="M20 4.6V11h-6.4"/></svg>
+      刷新当前
+    </button>
+    <button class="sheet-fbtn" id="sheetOpen" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-8.5 8.5"/><path d="M18 14.5v4A1.5 1.5 0 0 1 16.5 20h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6h4"/></svg>
+      新窗口
+    </button>
+  </div>
+</div>
+
+<!-- ==================== 命令面板 ==================== -->
+<div class="pal" id="pal">
+  <div class="pal-box" role="dialog" aria-modal="true" aria-label="快速切换">
+    <div class="pal-in">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+      <input id="palInput" type="text" placeholder="搜索应用…" autocomplete="off" spellcheck="false">
+      <kbd>ESC</kbd>
+    </div>
+    <div class="pal-list" id="palList"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================================
+ * 1. 应用菜单配置 —— 整个工作台唯一需要改动的地方
+ * ----------------------------------------------------------------------------
+ * 左侧菜单、移动端切换面板、⌘K 搜索列表，全部由下面这个数组自动生成。
+ *
+ * 字段：
+ *   id      唯一标识，用于地址栏（#/ledger）和"记住上次打开的是哪个"
+ *   name    显示名
+ *   sub     一句话说明（移动端切换面板里当副标题，可省略）
+ *   url     应用入口，指向 apps/ 下的 html；可以是 apps/xxx.html，
+ *           也可以是 apps/xxx/index.html 这种子目录形式
+ *   icon    可选：内联 SVG（推荐，跟随主题变色）或 emoji
+ *   accent  可选：这个应用的高亮色（选中时的竖条与图标）
+ *   width   可选：宽屏下这个应用的最大宽度（px），不写就铺满；手机上总是铺满
+ *
+ * ★★★ 如果未来要加第四个应用，只需把文件丢进 apps 文件夹，并在这里加一行配置即可 ★★★
+ *     （apps/ 里每个应用都是独立页面，样式和 JS 天然隔离，不需要任何改造）
+ * ========================================================================== */
+const apps = [
+  {
+    id: 'ledger',
+    name: '随手记',
+    sub: '本地记账',
+    url: 'apps/ledger/index.html',
+    accent: '#4a58e0',
+    width: 1180,
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'
+        + '<path d="M5.5 3.5h13v17l-2.8-1.8-2.7 1.8-2.7-1.8L7.5 20.5l-2-1.3V3.5Z"/>'
+        + '<path d="M9 8.2h6M9 11.6h6M9 15h3.6"/></svg>'
+  },
+  {
+    id: 'workout',
+    name: '锻炼打卡',
+    sub: 'AI 私教',
+    url: 'apps/workout/index.html',
+    accent: '#2f7cff',
+    width: 940,
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'
+        + '<path d="M3.6 9.4v5.2M6.8 7v10M17.2 7v10M20.4 9.4v5.2"/>'
+        + '<path d="M6.8 12h10.4"/></svg>'
+  },
+  {
+    id: 'daily',
+    name: '日常',
+    sub: '一件一件做',
+    url: 'apps/daily/index.html',
+    accent: '#3f8f5f',
+    width: 900,
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'
+        + '<path d="M3.8 6.6l1.7 1.7L8.7 5M3.8 13l1.7 1.7L8.7 11.5M3.8 19.4l1.7 1.7L8.7 18"/>'
+        + '<path d="M12 7.2h8.2M12 13.6h8.2M12 20h5.6"/></svg>'
+  }
+
+  /* ---- 新增应用示例（去掉注释即可）----
+  ,{
+    id: 'tool4',
+    name: '软件版本巡检',
+    sub: '版本对比',
+    url: 'apps/tool4.html',
+    accent: '#c4694a',
+    icon: '📁'
+  }
+  */
+];
+
+
+/* ============================================================================
+ * 2. 工作台逻辑（一般不需要改）
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  var LAST_KEY = 'myworkspace.last';
+  var RAIL_KEY = 'myworkspace.rail';
+  var PHONE_KEY = 'myworkspace.phone';
+  var FALLBACK = '#4a58e0';
+
+  var isMac = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+  var MOD = isMac ? '⌘' : 'Ctrl';
+
+  function $(id) { return document.getElementById(id); }
+  var elMenu = $('menuList');
+  var elScreen = $('screen');
+  var elSkel = $('skel');
+  var elSkelName = $('skelName');
+  var elBar = $('bar');
+  var elName = $('barName');
+  var elIco = $('barIco');
+  var elPath = $('barPath');
+  var elSheetList = $('sheetList');
+
+  var frames = {};    // id -> iframe
+  var loaded = {};    // id -> true
+  var menuItems = [];
+  var current = null;
+  var palSel = 0;
+  var palHits = [];
+
+  /* ---------------- 小工具 ---------------- */
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function iconHTML(app) {
+    var i = app.icon;
+    if (!i) return '<span class="emo">' + esc(app.name.slice(0, 1)) + '</span>';
+    if (i.charAt(0) === '<') return i;
+    return '<span class="emo">' + esc(i) + '</span>';
+  }
+  function find(id) {
+    for (var i = 0; i < apps.length; i++) if (apps[i].id === id) return apps[i];
+    return null;
+  }
+  function isNarrow() {
+    return window.matchMedia('(max-width: 880px)').matches;
+  }
+
+  if (!apps.length) {
+    elName.textContent = '先在 apps 数组里配置一个应用';
+    return;
+  }
+
+  $('appCount').textContent = apps.length;
+  $('footText').textContent = '本地运行 · ' + apps.length + ' 个应用';
+  $('sheetSub').textContent = apps.length + ' 个';
+  $('palBtn').textContent = MOD + 'K';
+
+  /* ---------------- 生成菜单 / 切换面板 ---------------- */
+  apps.forEach(function (app, i) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'mi';
+    btn.style.setProperty('--a', app.accent || FALLBACK);
+    btn.title = app.name;
+    btn.setAttribute('data-id', app.id);
+    btn.innerHTML =
+      '<span class="mi-ico">' + iconHTML(app) + '</span>' +
+      '<span class="mi-name">' + esc(app.name) + '</span>' +
+      '<span class="mi-kbd">' + (i + 1) + '</span>';
+    btn.addEventListener('click', function () { open(app.id); });
+    elMenu.appendChild(btn);
+    menuItems.push(btn);
+
+    var row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'sheet-item';
+    row.setAttribute('data-id', app.id);
+    row.style.setProperty('--a', app.accent || FALLBACK);
+    row.innerHTML =
+      '<span class="ico">' + iconHTML(app) + '</span>' +
+      '<span class="txt"><b>' + esc(app.name) + '</b><span>' + esc(app.sub || app.url) + '</span></span>' +
+      '<span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg></span>';
+    row.addEventListener('click', function () { closeSheet(); open(app.id); });
+    elSheetList.appendChild(row);
+  });
+
+  /* ---------------- 打开应用 ---------------- */
+  function open(id) {
+    var app = find(id);
+    if (!app) return;
+    current = id;
+
+    if (!frames[id]) createFrame(app);
+    Object.keys(frames).forEach(function (k) {
+      var on = (k === id);
+      frames[k].hidden = !on;
+      frames[k].classList.toggle('on', on && !!loaded[k]);
+    });
+
+    menuItems.forEach(function (el) {
+      var on = el.getAttribute('data-id') === id;
+      el.classList.toggle('on', on);
+      if (on) el.setAttribute('aria-current', 'page');
+      else el.removeAttribute('aria-current');
+    });
+    Array.prototype.forEach.call(elSheetList.children, function (el) {
+      el.classList.toggle('on', el.getAttribute('data-id') === id);
+    });
+
+    elName.textContent = app.name;
+    elIco.innerHTML = iconHTML(app);
+    elPath.textContent = app.url;
+    elScreen.style.maxWidth = app.width ? app.width + 'px' : '';
+    document.documentElement.style.setProperty('--acc', app.accent || FALLBACK);
+    document.title = app.name + ' · MyWorkspace';
+    elBar.classList.toggle('loading', !loaded[id]);
+
+    if (!loaded[id]) {
+      elSkelName.textContent = app.name;
+      elSkel.classList.remove('off');
+    } else {
+      elSkel.classList.add('off');
+    }
+
+    try {
+      if (location.hash !== '#/' + id) history.replaceState(null, '', '#/' + id);
+      localStorage.setItem(LAST_KEY, id);
+    } catch (e) {}
+  }
+
+  function createFrame(app) {
+    var f = document.createElement('iframe');
+    f.className = 'frame';
+    f.title = app.name;
+    f.setAttribute('allow', 'clipboard-write; fullscreen');
+    f.src = app.url;
+    f.hidden = true;
+
+    f.addEventListener('load', function () {
+      if (!f.getAttribute('src')) return;
+      loaded[app.id] = true;
+      if (current === app.id) {
+        f.hidden = false;
+        f.classList.add('on');
+        elSkel.classList.add('off');
+        elBar.classList.remove('loading');
+      }
+    });
+
+    elScreen.appendChild(f);
+    frames[app.id] = f;
+
+    // 内嵌失败兜底（路径写错 / 被浏览器拦截）
+    setTimeout(function () {
+      if (loaded[app.id] || current !== app.id) return;
+      elBar.classList.remove('loading');
+      elSkel.classList.add('off');
+      if (elScreen.querySelector('.frame-fail')) return;
+      var box = document.createElement('div');
+      box.className = 'frame-fail';
+      box.style.cssText = 'position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:8px;text-align:center;padding:28px;background:#fff;z-index:3';
+      box.innerHTML =
+        '<div style="font-size:13px;font-weight:600;color:#12151a">打不开这个应用</div>' +
+        '<div style="font-size:11.5px;line-height:1.8;color:#7f8896;max-width:300px">确认 ' +
+        '<code style="font-family:ui-monospace,monospace;background:rgba(15,20,30,.05);padding:1px 4px;border-radius:4px">' +
+        esc(app.url) + '</code> 存在；也可以点右上角「新窗口打开」直接访问。</div>';
+      elScreen.appendChild(box);
+    }, 9000);
+  }
+
+  /* ---------------- 顶栏动作 ---------------- */
+  function reloadCurrent() {
+    var f = frames[current];
+    if (!f) return;
+    loaded[current] = false;
+    f.classList.remove('on');
+    elBar.classList.add('loading');
+    elSkel.classList.remove('off');
+    elSkelName.textContent = (find(current) || {}).name || '';
+    try { f.contentWindow.location.reload(); }
+    catch (e) { f.src = f.src; }
+  }
+  $('reloadBtn').addEventListener('click', reloadCurrent);
+  $('sheetReload').addEventListener('click', function () { closeSheet(); reloadCurrent(); });
+
+  function openExternal() {
+    var app = find(current);
+    if (app) window.open(app.url, '_blank', 'noopener');
+  }
+  $('openBtn').addEventListener('click', openExternal);
+  $('sheetOpen').addEventListener('click', function () { closeSheet(); openExternal(); });
+
+  /* 手机尺寸预览 */
+  var phoneBtn = $('previewBtn');
+  function setPhone(on) {
+    document.body.classList.toggle('phone', on);
+    phoneBtn.classList.toggle('on', on);
+    phoneBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (on) setRail(true);
+    try { localStorage.setItem(PHONE_KEY, on ? '1' : '0'); } catch (e) {}
+  }
+  phoneBtn.addEventListener('click', function () {
+    setPhone(!document.body.classList.contains('phone'));
+  });
+  try { if (localStorage.getItem(PHONE_KEY) === '1') setPhone(true); } catch (e) {}
+
+  /* ---------------- 侧栏折叠 ---------------- */
+  function setRail(on) {
+    document.body.classList.toggle('rail', on);
+    try { localStorage.setItem(RAIL_KEY, on ? '1' : '0'); } catch (e) {}
+  }
+  $('railBtn').addEventListener('click', function () {
+    setRail(!document.body.classList.contains('rail'));
+  });
+  try { if (localStorage.getItem(RAIL_KEY) === '1') setRail(true); } catch (e) {}
+
+  /* ---------------- 移动端切换面板 ---------------- */
+  function openSheet() { document.body.classList.add('sheet-open'); }
+  function closeSheet() { document.body.classList.remove('sheet-open'); }
+  $('mask').addEventListener('click', function () { closeSheet(); closePal(); });
+  $('switcherBtn').addEventListener('click', function () {
+    if (isNarrow()) {
+      if (document.body.classList.contains('sheet-open')) closeSheet();
+      else openSheet();
+    } else {
+      openPal();
+    }
+  });
+
+  /* ---------------- 命令面板 ---------------- */
+  function renderPal(q) {
+    q = (q || '').trim().toLowerCase();
+    palHits = apps.filter(function (a) {
+      return !q || (a.name + ' ' + (a.sub || '') + ' ' + a.id).toLowerCase().indexOf(q) > -1;
+    });
+    if (palSel > palHits.length - 1) palSel = 0;
+
+    if (!palHits.length) {
+      $('palList').innerHTML = '<div class="pal-empty">没有匹配的应用</div>';
+      return;
+    }
+    $('palList').innerHTML = palHits.map(function (a, i) {
+      return '<button type="button" class="pal-item' + (i === palSel ? ' sel' : '') + (a.id === current ? ' cur' : '') + '"' +
+        ' data-i="' + i + '" style="--a:' + (a.accent || FALLBACK) + '">' +
+        '<span class="ico">' + iconHTML(a) + '</span>' +
+        '<span class="txt"><b>' + esc(a.name) + '</b><span>' + esc(a.url) + '</span></span>' +
+        '<span class="go">' + (a.id === current ? '当前' : '↵') + '</span>' +
+        '</button>';
+    }).join('');
+    Array.prototype.forEach.call($('palList').children, function (el) {
+      el.addEventListener('click', function () {
+        var hit = palHits[+el.getAttribute('data-i')];
+        if (hit) { closePal(); open(hit.id); }
+      });
+    });
+  }
+  function openPal() {
+    if (document.body.classList.contains('pal-open')) return;
+    document.body.classList.add('pal-open');
+    $('palInput').value = '';
+    palSel = 0;
+    renderPal('');
+    setTimeout(function () { $('palInput').focus(); }, 40);
+  }
+  function closePal() {
+    document.body.classList.remove('pal-open');
+    $('palInput').blur();
+  }
+  $('palBtn').addEventListener('click', openPal);
+  $('palInput').addEventListener('input', function () { palSel = 0; renderPal(this.value); });
+  $('palInput').addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowDown' || e.key === 'Tab') {
+      e.preventDefault();
+      palSel = Math.min(palSel + 1, palHits.length - 1);
+      renderPal(this.value);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      palSel = Math.max(palSel - 1, 0);
+      renderPal(this.value);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      var hit = palHits[palSel];
+      if (hit) { closePal(); open(hit.id); }
+    } else if (e.key === 'Escape') {
+      closePal();
+    }
+  });
+
+  /* ---------------- 快捷键 ---------------- */
+  document.addEventListener('keydown', function (e) {
+    var mod = isMac ? e.metaKey : e.ctrlKey;
+
+    if (mod && !e.altKey && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault();
+      if (document.body.classList.contains('pal-open')) closePal(); else openPal();
+      return;
+    }
+    if (e.altKey && !e.ctrlKey && !e.metaKey && /^[1-9]$/.test(e.key)) {
+      var n = +e.key - 1;
+      if (apps[n]) { e.preventDefault(); open(apps[n].id); }
+      return;
+    }
+    if (e.altKey && (e.key === 'r' || e.key === 'R')) { e.preventDefault(); reloadCurrent(); return; }
+    if (e.altKey && (e.key === 'p' || e.key === 'P')) {
+      e.preventDefault();
+      if (!isNarrow()) phoneBtn.click();
+      return;
+    }
+    if (e.altKey && (e.key === 'b' || e.key === 'B')) {
+      e.preventDefault();
+      setRail(!document.body.classList.contains('rail'));
+      return;
+    }
+    if (e.key === 'Escape') { closeSheet(); closePal(); }
+  });
+
+  /* ---------------- 路由 ---------------- */
+  window.addEventListener('hashchange', function () {
+    var id = (location.hash || '').replace(/^#\/?/, '');
+    if (id && id !== current && find(id)) open(id);
+    if (!id && apps[0]) open(apps[0].id);
+  });
+
+  window.addEventListener('resize', function () {
+    if (!isNarrow()) closeSheet();
+  });
+
+  /* ---------------- 启动 ---------------- */
+  var bootId = (location.hash || '').replace(/^#\/?/, '');
+  if (!find(bootId)) {
+    try { bootId = localStorage.getItem(LAST_KEY) || ''; } catch (e) { bootId = ''; }
+  }
+  if (!find(bootId)) bootId = apps[0].id;
+  open(bootId);
+})();
+</script>
+</body>
+</html>
